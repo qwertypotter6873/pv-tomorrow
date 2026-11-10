@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>내일 태양광 발전량 예측기</title>
+  <meta name="description" content="발전소 위치와 설비용량을 넣으면 기상 예보 3종을 읽어 내일 시간대별 태양광 발전량을 계산합니다.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="masthead">
+    <h1>내일 태양광 발전량 예측기</h1>
+    <p class="lead">발전소 위치와 설비용량을 넣으면, 기상 예보 3종을 읽어 시간대별 발전량을 계산합니다.</p>
+    <div class="tabs" role="tablist" aria-label="화면 선택">
+      <button role="tab" id="tab-forecast" aria-controls="panel-forecast" aria-selected="true">내일 예측</button>
+      <button role="tab" id="tab-verify" aria-controls="panel-verify" aria-selected="false" tabindex="-1">지난 날짜로 확인</button>
+      <button role="tab" id="tab-about" aria-controls="panel-about" aria-selected="false" tabindex="-1">모델과 데이터</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 내일 예측 -->
+    <section id="panel-forecast" class="panel" role="tabpanel" aria-labelledby="tab-forecast">
+      <form id="forecast-form" class="controls" novalidate>
+        <h2>발전소 조건</h2>
+        <label for="region">지역</label>
+        <select id="region"></select>
+
+        <div class="pair">
+          <div>
+            <label for="lat">위도</label>
+            <input id="lat" inputmode="decimal" autocomplete="off" aria-describedby="coord-help">
+          </div>
+          <div>
+            <label for="lon">경도</label>
+            <input id="lon" inputmode="decimal" autocomplete="off" aria-describedby="coord-help">
+          </div>
+        </div>
+        <p id="coord-help" class="help">지역을 고르면 자동으로 채워집니다. 직접 고쳐도 됩니다.</p>
+        <button type="button" id="locate" class="text-button">현재 위치 사용</button>
+
+        <label for="capacity">설비용량(kW)</label>
+        <input id="capacity" inputmode="decimal" autocomplete="off">
+
+        <label for="ratio">설비 성능 계수</label>
+        <input id="ratio" inputmode="decimal" autocomplete="off" aria-describedby="ratio-help">
+        <p id="ratio-help" class="help">설비용량 대비 실제 최대 출력의 비율입니다. 모르면 기본값을 그대로 두세요.</p>
+
+        <label for="day">예측할 날</label>
+        <select id="day">
+          <option value="0">오늘</option>
+          <option value="1" selected>내일</option>
+          <option value="2">모레</option>
+        </select>
+
+        <p id="forecast-error" class="error" role="alert" hidden></p>
+        <button type="submit" id="forecast-submit" class="primary">발전량 예측하기</button>
+      </form>
+
+      <div class="result" id="forecast-result" aria-live="polite">
+        <p class="placeholder" id="forecast-placeholder">모델을 불러오는 중입니다.</p>
+      </div>
+    </section>
+
+    <!-- 지난 날짜로 확인 -->
+    <section id="panel-verify" class="panel" role="tabpanel" aria-labelledby="tab-verify" hidden>
+      <form id="verify-form" class="controls" novalidate>
+        <h2>확인할 발전소와 날짜</h2>
+        <label for="plant">발전소</label>
+        <select id="plant"></select>
+        <p class="help" id="plant-note"></p>
+
+        <label for="verify-date">날짜</label>
+        <input id="verify-date" type="date">
+        <p class="help" id="date-range"></p>
+        <button type="button" id="random-date" class="text-button">아무 날짜나 고르기</button>
+
+        <p id="verify-error" class="error" role="alert" hidden></p>
+        <button type="submit" id="verify-submit" class="primary">예측과 실제 비교하기</button>
+      </form>
+
+      <div class="result" id="verify-result" aria-live="polite">
+        <p class="placeholder">모델 학습에 쓰지 않은 기간의 날짜를 골라, 그 전날 예보로 계산한 예측과 실제 발전량을 비교합니다.</p>
+      </div>
+    </section>
+
+    <!-- 모델과 데이터 -->
+    <section id="panel-about" class="panel about" role="tabpanel" aria-labelledby="tab-about" hidden>
+      <div id="about-body"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>날씨 예보: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> (CC BY 4.0). 발전실적: 공공데이터포털, 한국남부발전(주) 발전소별 태양광 발전실적.</p>
+    <p>학습용 프로젝트의 예측값이며 실제 입찰·정산 결과를 보장하지 않습니다.</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

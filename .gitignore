@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+node_modules/
+.DS_Store
+# build_dataset.py가 20초 안에 다시 만드는 중간 결과
+data/processed/hourly.parquet
+# 배포 도구가 만드는 폴더
+.vercel/
+
+# 제출용 zip·PDF를 만드는 폴더
+dist/

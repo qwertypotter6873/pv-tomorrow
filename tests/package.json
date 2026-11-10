@@ -1,0 +1,7 @@
+{
+  "name": "pv-tomorrow-tests",
+  "private": true,
+  "type": "module",
+  "scripts": { "parity": "node parity.mjs" },
+  "dependencies": { "onnxruntime-web": "1.20.1" }
+}

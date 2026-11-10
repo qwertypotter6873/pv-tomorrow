@@ -1,0 +1,9 @@
+{
+  "name": "pv-tomorrow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "parity": "cd tests && npm install && node parity.mjs",
+    "serve": "python3 -m http.server 8765 --directory web"
+  }
+}

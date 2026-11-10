@@ -1,0 +1,16 @@
+{
+  "student_id": "201935607",
+  "name": "김대현",
+  "title": "내일 태양광 발전량 예측기",
+  "github_url": "",
+  "demo_url": "",
+  "data_type": "timeseries (tabular)",
+  "training": "scratch",
+  "models": [
+    "LinearRegression (baseline)",
+    "HistGradientBoostingRegressor (proposed 1)",
+    "Bidirectional GRU (proposed 2)",
+    "Average ensemble of proposed 1 and 2 (final)"
+  ],
+  "primary_metric": "NMAE"
+}

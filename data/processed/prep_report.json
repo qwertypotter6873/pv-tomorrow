@@ -1,0 +1,253 @@
+{
+  "seed": 42,
+  "period": [
+    "2024-03-08",
+    "2026-02-28"
+  ],
+  "steps": [
+    {
+      "step": "① 같은 날짜가 두 번 나온 행 제거",
+      "before": 728784,
+      "after": 728784,
+      "note": ""
+    },
+    {
+      "step": "② 결측·음수 발전량 제거",
+      "before": 728784,
+      "after": 728784,
+      "note": ""
+    },
+    {
+      "step": "③ 설비용량 불일치 발전소 제외",
+      "before": 728784,
+      "after": 694080,
+      "note": "2곳: 신인천전망대, 신인천 1_2단계 주차장"
+    },
+    {
+      "step": "④ 정지일(하루 발전량 ≈ 0) 제외",
+      "before": 694080,
+      "after": 684408,
+      "note": "발전소·일 403건"
+    },
+    {
+      "step": "⑤ 날씨 예보가 비어 있는 시간 제외",
+      "before": 684408,
+      "after": 684369,
+      "note": ""
+    },
+    {
+      "step": "⑥ 밤 시간(태양 고도 ≤ 0°) 제외",
+      "before": 684369,
+      "after": 343306,
+      "note": "밤 시간 발전량 비중 0.0701%"
+    },
+    {
+      "step": "⑦ 남은 날 300일 미만 발전소 제외",
+      "before": 343306,
+      "after": 343306,
+      "note": "0곳"
+    }
+  ],
+  "plants_listed": 47,
+  "plants_excluded_manual": [
+    {
+      "name": "행원소수력",
+      "note": "2024년 이후 발전량 0인 날이 74%라 제외"
+    },
+    {
+      "name": "감우리",
+      "note": "소재지를 공개 자료로 특정하지 못해 제외"
+    },
+    {
+      "name": "세화리",
+      "note": "제주에 세화리가 두 곳(구좌읍·표선면)이라 소재지를 특정하지 못해 제외"
+    },
+    {
+      "name": "익산 다송리",
+      "note": "파일에 누적 계량값과 빈 날짜 행이 섞여 있어 제외"
+    },
+    {
+      "name": "부산철도 2호기",
+      "note": "2025년 1월 이후 자료만 있고 소재지 미상이라 제외"
+    }
+  ],
+  "capacity_ratio": {
+    "busan_field": 0.888,
+    "busan_main_1": 0.375,
+    "busan_main_2": 0.84,
+    "busan_newport": 0.65,
+    "busan_station": 0.841,
+    "busan_store": 0.67,
+    "busan_water": 0.878,
+    "hadong_health": 0.876,
+    "hadong_main_1": 0.652,
+    "hadong_main_2": 0.629,
+    "hadong_main_3": 0.747,
+    "hadong_main_4": 0.85,
+    "hadong_main_5": 0.864,
+    "hadong_main_6": 0.898,
+    "hadong_sewage": 0.828,
+    "hadong_stadium": 0.643,
+    "hadong_substation": 0.787,
+    "hadong_water": 0.737,
+    "hwachon": 0.862,
+    "icheon_a": 0.842,
+    "icheon_b": 0.84,
+    "incheon_susan": 0.905,
+    "mureung": 0.855,
+    "namjeju": 0.726,
+    "samcheok_1": 0.871,
+    "samcheok_2": 0.897,
+    "samcheok_3": 0.857,
+    "samcheok_4": 0.836,
+    "sinincheon_intake": 0.709,
+    "sinincheon_main": 0.783,
+    "sinincheon_north": 0.799,
+    "sinincheon_obs": 1.221,
+    "sinincheon_office": 0.829,
+    "sinincheon_park": 0.78,
+    "sinincheon_park12": 2.874,
+    "sinpung": 0.878,
+    "songdang": 0.882,
+    "wasan": 0.873,
+    "wimi2": 0.877,
+    "yeongwol_main": 0.322,
+    "yeongwol_rail": 0.883,
+    "yongsu": 0.851
+  },
+  "plants_excluded_capacity": {
+    "신인천전망대": 1.22,
+    "신인천 1_2단계 주차장": 2.87
+  },
+  "outage_days_by_series": {
+    "busan_field": 3,
+    "busan_main_1": 18,
+    "busan_main_2": 12,
+    "busan_newport": 4,
+    "busan_station": 0,
+    "busan_store": 30,
+    "busan_water": 2,
+    "hadong_health": 0,
+    "hadong_main_1": 10,
+    "hadong_main_2": 13,
+    "hadong_main_3": 10,
+    "hadong_main_4": 4,
+    "hadong_main_5": 3,
+    "hadong_main_6": 1,
+    "hadong_sewage": 0,
+    "hadong_stadium": 6,
+    "hadong_substation": 0,
+    "hadong_water": 16,
+    "hwachon": 0,
+    "icheon_a": 9,
+    "icheon_b": 5,
+    "incheon_susan": 21,
+    "mureung": 3,
+    "namjeju": 5,
+    "samcheok_1": 2,
+    "samcheok_2": 2,
+    "samcheok_3": 1,
+    "samcheok_4": 1,
+    "sinincheon_intake": 7,
+    "sinincheon_main": 1,
+    "sinincheon_north": 1,
+    "sinincheon_office": 1,
+    "sinincheon_park": 1,
+    "sinpung": 5,
+    "songdang": 54,
+    "wasan": 14,
+    "wimi2": 17,
+    "yeongwol_main": 11,
+    "yeongwol_rail": 4,
+    "yongsu": 106
+  },
+  "weather_missing_rows": 39,
+  "night_rows_with_generation": 12869,
+  "night_energy_share": 0.0007011678657563532,
+  "plants_excluded_few_days": {},
+  "holdout_sites": {
+    "37.757_127.985": [
+      "화촌주민참여형"
+    ],
+    "34.951_127.820": [
+      "하동본부 1호기",
+      "하동본부 2호기",
+      "하동본부 3호기",
+      "하동본부 4호기",
+      "하동본부 5호기",
+      "하동본부 6호기"
+    ],
+    "37.317_127.470": [
+      "이천D(백사면B)",
+      "이천시 백사면A"
+    ],
+    "33.487_126.664": [
+      "와산리"
+    ]
+  },
+  "split_rows": {
+    "train": 109116,
+    "test": 107584,
+    "unused": 50079,
+    "val": 40306,
+    "test_new_site": 36221
+  },
+  "split_days": {
+    "train": [
+      "2024-03-08",
+      "2024-12-31"
+    ],
+    "val": [
+      "2025-01-01",
+      "2025-04-30"
+    ],
+    "test": [
+      "2025-05-01",
+      "2026-02-28"
+    ]
+  },
+  "series_final": 40,
+  "sites_final": 18,
+  "features": [
+    "ghi_jma",
+    "dir_jma",
+    "dif_jma",
+    "cloud_jma",
+    "temp_jma",
+    "rh_jma",
+    "wind_jma",
+    "precip_jma",
+    "kt_jma",
+    "ghi_ecmwf",
+    "dir_ecmwf",
+    "dif_ecmwf",
+    "cloud_ecmwf",
+    "temp_ecmwf",
+    "rh_ecmwf",
+    "wind_ecmwf",
+    "precip_ecmwf",
+    "kt_ecmwf",
+    "ghi_icon",
+    "dir_icon",
+    "dif_icon",
+    "cloud_icon",
+    "temp_icon",
+    "rh_icon",
+    "wind_icon",
+    "precip_icon",
+    "kt_icon",
+    "snow_jma",
+    "snow_icon",
+    "ghi_mean",
+    "ghi_std",
+    "ghi_min",
+    "ghi_max",
+    "cloud_mean",
+    "kt_mean",
+    "cos_zenith",
+    "azimuth",
+    "extra_ghi",
+    "doy_sin",
+    "doy_cos"
+  ]
+}
