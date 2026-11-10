@@ -3,6 +3,8 @@
 발전소 위치와 설비용량을 넣으면, 하루 전 기상 예보를 읽어 다음 날 시간대별 태양광 발전량을 계산하는 웹 서비스입니다.
 공공데이터포털의 발전실적으로 모델을 직접 학습했고, 학습한 모델 파일을 브라우저 안에서 실행합니다.
 
+데모: https://qwertypotter6873.github.io/pv-tomorrow/
+
 ![내일 예측 화면](docs/screenshots/01_forecast.png)
 
 ## 0. 프로젝트 정보
@@ -11,8 +13,8 @@
 |---|---|
 | 학번·이름 | 201935607 김대현 |
 | 과목 | 가천대학교 기계학습 프로그래밍, 기말 프로젝트 |
-| 데모 URL | (배포 후 입력) |
-| GitHub URL | (저장소 공개 후 입력) |
+| 데모 URL | https://qwertypotter6873.github.io/pv-tomorrow/ |
+| GitHub URL | https://github.com/qwertypotter6873/pv-tomorrow |
 | 데이터 형태 | 시계열(표 형태): 1시간 단위 발전량 + 기상 예보 |
 | 학습 방식 | 처음부터 학습(Scratch) |
 | 최종 모델 | 그래디언트 부스팅과 양방향 GRU의 평균 앙상블 |
@@ -316,8 +318,8 @@
 
 | 항목 | 내용 |
 |---|---|
-| 플랫폼 | (배포 후 입력) |
-| 공개 URL | (배포 후 입력) |
+| 플랫폼 | GitHub Pages. GitHub Actions가 `web/` 폴더를 배포한다(`.github/workflows/pages.yml`) |
+| 공개 URL | https://qwertypotter6873.github.io/pv-tomorrow/ |
 | 배포 대상 | `web/` 폴더(정적 파일 + 모델 파일). 빌드 과정 없음 |
 | 서버 | 없음. 추론은 브라우저에서, 날씨는 Open-Meteo 공개 API에서 직접 받음 |
 
@@ -328,7 +330,7 @@ API 키를 쓰지 않아 저장소에 비밀값이 없다.
 **실행 환경**: Python 3.13, macOS(Apple M1 Pro)에서 확인. GPU 불필요. 전체 실행 약 7분.
 
 ```bash
-git clone <저장소 주소>
+git clone https://github.com/qwertypotter6873/pv-tomorrow.git
 cd pv-tomorrow
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt

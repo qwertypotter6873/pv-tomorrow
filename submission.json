@@ -2,8 +2,8 @@
   "student_id": "201935607",
   "name": "김대현",
   "title": "내일 태양광 발전량 예측기",
-  "github_url": "",
-  "demo_url": "",
+  "github_url": "https://github.com/qwertypotter6873/pv-tomorrow",
+  "demo_url": "https://qwertypotter6873.github.io/pv-tomorrow/",
   "data_type": "timeseries (tabular)",
   "training": "scratch",
   "models": [
