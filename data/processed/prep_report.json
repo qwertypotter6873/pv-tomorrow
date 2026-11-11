@@ -7,48 +7,54 @@
   "steps": [
     {
       "step": "① 같은 날짜가 두 번 나온 행 제거",
-      "before": 728784,
-      "after": 728784,
+      "before": 1228136,
+      "after": 1228136,
       "note": ""
     },
     {
       "step": "② 결측·음수 발전량 제거",
-      "before": 728784,
-      "after": 728784,
+      "before": 1228136,
+      "after": 1228022,
       "note": ""
     },
     {
       "step": "③ 설비용량 불일치 발전소 제외",
-      "before": 728784,
-      "after": 694080,
+      "before": 1228022,
+      "after": 1193318,
       "note": "2곳: 신인천전망대, 신인천 1_2단계 주차장"
     },
     {
+      "step": "③-1 설비용량 1.2배 넘는 시간값 제거",
+      "before": 1193318,
+      "after": 1193281,
+      "note": ""
+    },
+    {
       "step": "④ 정지일(하루 발전량 ≈ 0) 제외",
-      "before": 694080,
-      "after": 684408,
-      "note": "발전소·일 403건"
+      "before": 1193281,
+      "after": 1174592,
+      "note": "발전소·일 781건"
     },
     {
       "step": "⑤ 날씨 예보가 비어 있는 시간 제외",
-      "before": 684408,
-      "after": 684369,
+      "before": 1174592,
+      "after": 1174536,
       "note": ""
     },
     {
       "step": "⑥ 밤 시간(태양 고도 ≤ 0°) 제외",
-      "before": 684369,
-      "after": 343306,
-      "note": "밤 시간 발전량 비중 0.0701%"
+      "before": 1174536,
+      "after": 592614,
+      "note": "밤 시간 발전량 비중 0.0431%"
     },
     {
       "step": "⑦ 남은 날 300일 미만 발전소 제외",
-      "before": 343306,
-      "after": 343306,
+      "before": 592614,
+      "after": 592614,
       "note": "0곳"
     }
   ],
-  "plants_listed": 47,
+  "plants_listed": 84,
   "plants_excluded_manual": [
     {
       "name": "행원소수력",
@@ -69,6 +75,10 @@
     {
       "name": "부산철도 2호기",
       "note": "2025년 1월 이후 자료만 있고 소재지 미상이라 제외"
+    },
+    {
+      "name": "동해바이오화력본부 태양광",
+      "note": "원자료의 시간 열 순서가 뒤섞여 있어(한낮에 값이 꺼지고 저녁에 최대) 제외. 예보 일사량과의 상관 0.03"
     }
   ],
   "capacity_ratio": {
@@ -79,6 +89,10 @@
     "busan_station": 0.841,
     "busan_store": 0.67,
     "busan_water": 0.878,
+    "ewp_dangjin": 0.782,
+    "ewp_dangjin_float": 0.758,
+    "ewp_dangjin_store": 0.772,
+    "ewp_ulsan": 0.752,
     "hadong_health": 0.876,
     "hadong_main_1": 0.652,
     "hadong_main_2": 0.629,
@@ -94,6 +108,38 @@
     "icheon_a": 0.842,
     "icheon_b": 0.84,
     "incheon_susan": 0.905,
+    "kdhc_bundang": 0.71,
+    "kdhc_gangnam": 0.831,
+    "kdhc_gangneung": 0.901,
+    "kdhc_giheung": 0.773,
+    "kdhc_gwanggyo": 0.864,
+    "kdhc_gwangyang": 0.819,
+    "kdhc_hambaek": 0.89,
+    "kdhc_hwaseong": 0.849,
+    "kdhc_paju": 0.842,
+    "kdhc_pangyo": 0.607,
+    "kdhc_sejong": 0.853,
+    "kdhc_suwon": 0.822,
+    "kdhc_yangsan": 0.788,
+    "khnp_cheongpyeong_1": 0.812,
+    "khnp_cheongpyeong_2": 0.823,
+    "khnp_cheongsong": 0.879,
+    "khnp_hanbit_1": 0.821,
+    "khnp_hanbit_2": 0.822,
+    "khnp_hanbit_3": 0.841,
+    "khnp_hanbit_4": 0.851,
+    "khnp_hanbit_5": 0.881,
+    "khnp_hanbit_6": 0.887,
+    "khnp_hq": 0.727,
+    "khnp_kori_1": 0.879,
+    "khnp_kori_2": 0.904,
+    "khnp_samnangjin_1": 0.818,
+    "khnp_samnangjin_2": 0.841,
+    "khnp_sancheong": 0.858,
+    "khnp_wolseong": 0.871,
+    "khnp_wolseong_store": 0.831,
+    "khnp_yecheon_1": 0.742,
+    "khnp_yecheon_2": 0.898,
     "mureung": 0.855,
     "namjeju": 0.726,
     "samcheok_1": 0.871,
@@ -119,6 +165,9 @@
     "신인천전망대": 1.22,
     "신인천 1_2단계 주차장": 2.87
   },
+  "impossible_rows_by_source": {
+    "kdhc": 37
+  },
   "outage_days_by_series": {
     "busan_field": 3,
     "busan_main_1": 18,
@@ -127,6 +176,10 @@
     "busan_station": 0,
     "busan_store": 30,
     "busan_water": 2,
+    "ewp_dangjin": 4,
+    "ewp_dangjin_float": 0,
+    "ewp_dangjin_store": 0,
+    "ewp_ulsan": 4,
     "hadong_health": 0,
     "hadong_main_1": 10,
     "hadong_main_2": 13,
@@ -142,6 +195,38 @@
     "icheon_a": 9,
     "icheon_b": 5,
     "incheon_susan": 21,
+    "kdhc_bundang": 3,
+    "kdhc_gangnam": 2,
+    "kdhc_gangneung": 4,
+    "kdhc_giheung": 6,
+    "kdhc_gwanggyo": 3,
+    "kdhc_gwangyang": 0,
+    "kdhc_hambaek": 6,
+    "kdhc_hwaseong": 2,
+    "kdhc_paju": 2,
+    "kdhc_pangyo": 3,
+    "kdhc_sejong": 3,
+    "kdhc_suwon": 2,
+    "kdhc_yangsan": 0,
+    "khnp_cheongpyeong_1": 13,
+    "khnp_cheongpyeong_2": 75,
+    "khnp_cheongsong": 4,
+    "khnp_hanbit_1": 35,
+    "khnp_hanbit_2": 33,
+    "khnp_hanbit_3": 6,
+    "khnp_hanbit_4": 10,
+    "khnp_hanbit_5": 9,
+    "khnp_hanbit_6": 9,
+    "khnp_hq": 0,
+    "khnp_kori_1": 5,
+    "khnp_kori_2": 3,
+    "khnp_samnangjin_1": 2,
+    "khnp_samnangjin_2": 0,
+    "khnp_sancheong": 46,
+    "khnp_wolseong": 0,
+    "khnp_wolseong_store": 1,
+    "khnp_yecheon_1": 40,
+    "khnp_yecheon_2": 43,
     "mureung": 3,
     "namjeju": 5,
     "samcheok_1": 2,
@@ -161,36 +246,43 @@
     "yeongwol_rail": 4,
     "yongsu": 106
   },
-  "weather_missing_rows": 39,
-  "night_rows_with_generation": 12869,
-  "night_energy_share": 0.0007011678657563532,
+  "weather_missing_rows": 56,
+  "night_rows_with_generation": 20827,
+  "night_energy_share": 0.00043114590368720614,
   "plants_excluded_few_days": {},
   "holdout_sites": {
+    "37.190_128.660": [
+      "지역난방 함백"
+    ],
+    "37.285_127.060": [
+      "지역난방 광교"
+    ],
     "37.757_127.985": [
       "화촌주민참여형"
     ],
-    "34.951_127.820": [
-      "하동본부 1호기",
-      "하동본부 2호기",
-      "하동본부 3호기",
-      "하동본부 4호기",
-      "하동본부 5호기",
-      "하동본부 6호기"
+    "37.509_126.632": [
+      "신인천 북측부지",
+      "신인천 주차장",
+      "신인천본관주차장",
+      "신인천소내",
+      "신인천해수구취수구"
     ],
-    "37.317_127.470": [
-      "이천D(백사면B)",
-      "이천시 백사면A"
+    "36.390_129.000": [
+      "청송양수수상태양광#2"
+    ],
+    "35.055_128.827": [
+      "부산신항"
     ],
     "33.487_126.664": [
       "와산리"
     ]
   },
   "split_rows": {
-    "train": 109116,
-    "test": 107584,
-    "unused": 50079,
-    "val": 40306,
-    "test_new_site": 36221
+    "test": 222731,
+    "train": 195492,
+    "val": 87057,
+    "unused": 48008,
+    "test_new_site": 39326
   },
   "split_days": {
     "train": [
@@ -206,8 +298,14 @@
       "2026-02-28"
     ]
   },
-  "series_final": 40,
-  "sites_final": 18,
+  "series_by_source": {
+    "kospo": 40,
+    "khnp": 19,
+    "kdhc": 13,
+    "ewp": 4
+  },
+  "series_final": 76,
+  "sites_final": 42,
   "features": [
     "ghi_jma",
     "dir_jma",

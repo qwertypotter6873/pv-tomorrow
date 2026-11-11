@@ -1,0 +1,13 @@
+[
+  {
+    "id": "15099650",
+    "title": "한국동서발전(주)_일자별지점별 태양광 발전량 데이터_20260609",
+    "page_url": "https://www.data.go.kr/data/15099650/fileData.do",
+    "detail_pk": "uddi:a1b02e0f-7852-45eb-b300-f71fc1841e2d",
+    "license": "이용허락범위 제한 없음",
+    "file": "15099650.csv",
+    "bytes": 1168800,
+    "sha256": "7df668621ccbe3747799c06806a98657b09b98fa74567eb1ea8537e8de7fd50c",
+    "downloaded_at": "2026-11-11T03:03:22+00:00"
+  }
+]

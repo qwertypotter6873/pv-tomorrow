@@ -1,8 +1,11 @@
-"""발전실적(파일 형식 2종)과 하루 전 날씨 예보를 묶어 시간 단위 학습용 표를 만든다.
+"""네 기관의 발전실적과 하루 전 날씨 예보를 묶어 시간 단위 학습용 표를 만든다.
 
 입력
-- data/plants.csv              발전소 목록(좌표, 공식 설비용량, 사용 여부)
-- data/raw/kospo/*.csv         한국남부발전 발전소별 시간대별 발전실적
+- data/plants.csv              발전소 목록(출처, 좌표, 설비용량, 사용 여부)
+- data/raw/kospo/*.csv         한국남부발전: 하루 한 줄, 시간 열 24개(kWh)
+- data/raw/ewp/*.csv           한국동서발전: 하루 한 줄, 시간 열 24개(Wh)
+- data/raw/khnp/*.zip          한국수력원자력: 한 시간 한 줄(kWh)
+- data/raw/kdhc/*.zip          한국지역난방공사: 인버터별 하루 누적 발전량(kWh)
 - data/raw/weather/*_d1.csv.gz Open-Meteo 하루 전 예보 이력
 
 출력
@@ -14,8 +17,10 @@
 
 from __future__ import annotations
 
+import io
 import json
 import re
+import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -33,7 +38,7 @@ PERIOD_START = "2024-03-08"
 PERIOD_END = "2026-02-28"
 TRAIN_END = "2024-12-31"  # 학습: 2024-03-08 ~ 2024-12-31
 VAL_END = "2025-04-30"  # 검증: 2025-01-01 ~ 2025-04-30, 시험: 2025-05-01 ~ 2026-02-28
-N_HOLDOUT_SITES = {"육지": 3, "제주": 1}  # 학습에서 통째로 뺄 '처음 보는 발전소' 위치 수
+N_HOLDOUT_SITES = {"육지": 6, "제주": 1}  # 학습에서 통째로 뺄 '처음 보는 발전소' 위치 수
 
 MODELS = ["jma_seamless", "ecmwf_ifs025", "icon_seamless"]
 SHORT = {"jma_seamless": "jma", "ecmwf_ifs025": "ecmwf", "icon_seamless": "icon"}
@@ -49,6 +54,7 @@ WVARS = {
     "snowfall": "snow",
 }
 CAPACITY_MISMATCH = 1.05  # 99.9백분위 출력이 공식 설비용량의 이 배수를 넘으면 용량 정보 불일치로 본다
+IMPOSSIBLE_CF = 1.2  # 한 시간 발전량이 설비용량의 이 배수를 넘으면 계량 오류로 보고 그 시간만 뺀다
 MIN_DAYS = 300  # 정제 후 남은 날이 이보다 적은 발전소는 제외
 
 
@@ -71,8 +77,9 @@ def hour_columns(columns) -> dict[str, int]:
     return found
 
 
-def read_generation(plants: pd.DataFrame, manifest: dict) -> pd.DataFrame:
-    """발전소·호기별 일 단위 넓은 표를 (발전소, 날짜, 시각) 긴 표로 바꾼다."""
+def read_kospo(plants: pd.DataFrame) -> list[pd.DataFrame]:
+    """한국남부발전: 발전소·호기별 일 단위 넓은 표(kWh)."""
+    manifest = {m["id"]: m for m in json.loads((RAW / "kospo" / "manifest.json").read_text(encoding="utf-8"))}
     frames = []
     for data_id, group in plants.groupby("data_id"):
         meta = manifest[str(data_id)]
@@ -86,11 +93,96 @@ def read_generation(plants: pd.DataFrame, manifest: dict) -> pd.DataFrame:
         for plant in group.itertuples():
             part = df[df[unit_col].astype(str).str.strip() == str(plant.unit)] if len(group) > 1 else df
             long = part.melt(id_vars="date", value_vars=list(hcols), var_name="col", value_name="gen_kwh")
-            long["hour"] = long["col"].map(hcols).astype("int8")
+            long["hour"] = long["col"].map(hcols)
             long["gen_kwh"] = pd.to_numeric(long["gen_kwh"], errors="coerce")
             long["series_id"] = plant.series_id
             frames.append(long[["series_id", "date", "hour", "gen_kwh"]])
+    return frames
+
+
+def read_ewp(plants: pd.DataFrame) -> list[pd.DataFrame]:
+    """한국동서발전: 발전기별 일 단위 넓은 표. 시간 열 이름은 '01시'..'24시', 단위는 Wh."""
+    df = pd.read_csv(RAW / "ewp" / "15099650.csv", encoding="cp949")
+    hcols = {c: int(c[:2]) for c in df.columns if re.fullmatch(r"\d{2}시", str(c))}
+    df["date"] = pd.to_datetime(df["날짜"], errors="coerce")
+    df = df[df["date"].notna()]
+    frames = []
+    for plant in plants.itertuples():
+        part = df[df["발전기명"] == plant.unit]
+        long = part.melt(id_vars="date", value_vars=list(hcols), var_name="col", value_name="gen_kwh")
+        long["hour"] = long["col"].map(hcols)
+        long["gen_kwh"] = pd.to_numeric(long["gen_kwh"], errors="coerce") / 1000.0  # Wh → kWh
+        long["series_id"] = plant.series_id
+        frames.append(long[["series_id", "date", "hour", "gen_kwh"]])
+    return frames
+
+
+def read_khnp(plants: pd.DataFrame) -> list[pd.DataFrame]:
+    """한국수력원자력: 발전기·시간별 긴 표(계량전력량 kWh). zip 안의 CSV를 풀지 않고 읽는다."""
+    keys = dict(zip(plants["unit"], plants["series_id"]))
+    frames = []
+    with zipfile.ZipFile(RAW / "khnp" / "15165984.zip") as z:
+        for name in z.namelist():
+            if not name.lower().endswith(".csv"):
+                continue
+            df = pd.read_csv(io.BytesIO(z.read(name)), encoding="utf-8-sig", usecols=["거래일", "발전기명", "시간", "계량전력량"])
+            df = df[df["발전기명"].isin(keys)]
+            if df.empty:
+                continue
+            frames.append(
+                pd.DataFrame(
+                    {
+                        "series_id": df["발전기명"].map(keys),
+                        "date": pd.to_datetime(df["거래일"], errors="coerce"),
+                        "hour": df["시간"].astype(int),
+                        "gen_kwh": pd.to_numeric(df["계량전력량"], errors="coerce"),
+                    }
+                )
+            )
+    return frames
+
+
+def read_kdhc(plants: pd.DataFrame) -> list[pd.DataFrame]:
+    """한국지역난방공사: 인버터마다 '금일발전량'(그날 0시부터의 누적 kWh)이 한 시간 간격으로 기록돼 있다.
+
+    한 시간 발전량 = 이번 기록의 누적값 − 직전 기록의 누적값. 지점의 값은 인버터 합계다.
+    0시 행은 직전 값이 없어 버리고(밤이라 0), 누적값이 줄어든 경우(계량 초기화)는 결측으로 둔다.
+    """
+    keys = dict(zip(plants["unit"], plants["series_id"]))
+    with zipfile.ZipFile(RAW / "kdhc" / "15165728.zip") as z:
+        name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
+        df = pd.read_csv(io.BytesIO(z.read(name)), encoding="utf-8-sig", usecols=["일자", "시간", "발전소 지역", "인버터 ID", "금일발전량"])
+    df = df[df["발전소 지역"].isin(keys)].sort_values(["발전소 지역", "인버터 ID", "일자", "시간"])
+    step = df.groupby(["발전소 지역", "인버터 ID", "일자"])["금일발전량"].diff()
+    df["gen_kwh"] = step.where(step >= 0)
+    df = df[df["시간"] >= 1]
+    site = df.groupby(["발전소 지역", "일자", "시간"], as_index=False)["gen_kwh"].sum(min_count=1)
+    return [
+        pd.DataFrame(
+            {
+                "series_id": site["발전소 지역"].map(keys),
+                "date": pd.to_datetime(site["일자"], errors="coerce"),
+                "hour": site["시간"].astype(int) + KDHC_HOUR_SHIFT,
+                "gen_kwh": site["gen_kwh"],
+            }
+        )
+    ]
+
+
+# 지역난방 자료의 '시간 h'는 h시~(h+1)시 구간을 뜻한다. 다른 기관처럼 '끝나는 시각'으로 맞추려면 1을 더한다.
+# 근거: 예보 일사량과의 상관이 보정 전 0.877, 한 시간 늦췄을 때 0.928 (광교, 2025-01~2026-02)
+KDHC_HOUR_SHIFT = 1
+READERS = {"kospo": read_kospo, "ewp": read_ewp, "khnp": read_khnp, "kdhc": read_kdhc}
+
+
+def read_generation(plants: pd.DataFrame) -> pd.DataFrame:
+    """출처마다 다른 형식을 (발전소, 날짜, 끝나는 시각 1~24, 발전량 kWh) 긴 표 하나로 통일한다."""
+    frames = []
+    for source, group in plants.groupby("source"):
+        frames += READERS[source](group)
     gen = pd.concat(frames, ignore_index=True)
+    gen = gen[gen["date"].notna() & gen["hour"].between(1, 24)]
+    gen["hour"] = gen["hour"].astype("int8")
     return gen[(gen["date"] >= PERIOD_START) & (gen["date"] <= PERIOD_END)].reset_index(drop=True)
 
 
@@ -159,21 +251,20 @@ def main() -> None:
         report["steps"].append({"step": step, "before": int(before), "after": int(after), "note": note})
         print(f"  {step:<34} {before:>9,} → {after:>9,}  {note}")
 
-    plants_all = pd.read_csv(ROOT / "data" / "plants.csv", dtype={"data_id": str})
+    plants_all = pd.read_csv(ROOT / "data" / "plants.csv", dtype={"data_id": str, "unit": str})
     plants = plants_all[plants_all["use"] == 1].copy()
     plants["site"] = [site_key(a, b) for a, b in zip(plants["lat"], plants["lon"])]
-    manifest = {m["id"]: m for m in json.loads((RAW / "kospo" / "manifest.json").read_text(encoding="utf-8"))}
     report["plants_listed"] = int(len(plants_all))
     report["plants_excluded_manual"] = plants_all.loc[plants_all["use"] == 0, ["name", "note"]].to_dict("records")
 
     # --- 1) 형식 통일: 넓은 표(하루 한 줄, 24개 시간 열) → 긴 표(한 시간 한 줄)
-    gen = read_generation(plants, manifest)
+    gen = read_generation(plants)
     print(f"발전실적: 발전소·호기 {gen['series_id'].nunique()}개, 시간 단위 {len(gen):,}행")
     n0 = len(gen)
     gen = gen.drop_duplicates(["series_id", "date", "hour"], keep="first")
     log("① 같은 날짜가 두 번 나온 행 제거", n0, len(gen))
 
-    gen = gen.merge(plants[["series_id", "name", "region", "site", "lat", "lon", "capacity_kw"]], on="series_id")
+    gen = gen.merge(plants[["series_id", "source", "name", "region", "area", "site", "lat", "lon", "capacity_kw"]], on="series_id")
     # 시간 열 h는 (h-1)시~h시 구간의 발전량이다. 24시는 다음 날 0시가 된다.
     gen["ts_end"] = gen["date"] + pd.to_timedelta(gen["hour"].astype(int), unit="h")
 
@@ -194,6 +285,14 @@ def main() -> None:
     n0 = len(gen)
     gen = gen[~gen["series_id"].isin(mismatch.index)]
     log("③ 설비용량 불일치 발전소 제외", n0, len(gen), f"{len(mismatch)}곳: {', '.join(report['plants_excluded_capacity'])}")
+
+    # --- 3-1) 물리적으로 불가능한 시간값 제거: 한 시간 발전량은 설비용량 × 1시간을 넘을 수 없다.
+    #          (지역난방 자료는 2025-03-17 15시에 13개 지사가 한꺼번에 용량의 3~5배를 기록했다: 누적 계량값의 튐)
+    spike = gen["gen_kwh"] > IMPOSSIBLE_CF * gen["capacity_kw"]
+    report["impossible_rows_by_source"] = gen.loc[spike, "source"].value_counts().to_dict()
+    n0 = len(gen)
+    gen = gen[~spike]
+    log(f"③-1 설비용량 {IMPOSSIBLE_CF:.1f}배 넘는 시간값 제거", n0, len(gen))
 
     # --- 4) 정지일 제외: 하루 발전량이 0이거나 그 발전소 평소(중앙값)의 2% 미만인 날
     daily = gen.groupby(["series_id", "date"])["gen_kwh"].sum().rename("day_kwh").reset_index()
@@ -262,12 +361,13 @@ def main() -> None:
         "val": ["2025-01-01", VAL_END],
         "test": ["2025-05-01", PERIOD_END],
     }
+    report["series_by_source"] = df.drop_duplicates("series_id")["source"].value_counts().to_dict()
     report["series_final"] = int(df["series_id"].nunique())
     report["sites_final"] = int(df["site"].nunique())
     report["features"] = FEATURES
 
     cols = (
-        ["series_id", "name", "region", "site", "lat", "lon", "capacity_kw", "date", "hour", "ts_end"]
+        ["series_id", "source", "name", "region", "area", "site", "lat", "lon", "capacity_kw", "date", "hour", "ts_end"]
         + ["gen_kwh", "cf", "period", "new_site", "split"]
         + FEATURES
     )

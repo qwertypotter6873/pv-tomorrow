@@ -26,6 +26,15 @@
     <section id="panel-forecast" class="panel" role="tabpanel" aria-labelledby="tab-forecast">
       <form id="forecast-form" class="controls" novalidate>
         <h2>발전소 조건</h2>
+        <label for="address">주소로 찾기</label>
+        <div class="address-row">
+          <input id="address" autocomplete="off" placeholder="예: 세종시 한누리대로 2130" aria-describedby="address-help">
+          <button type="button" id="address-search" class="secondary">찾기</button>
+        </div>
+        <p id="address-status" class="help found" aria-live="polite" hidden></p>
+        <ul id="address-results" class="address-results" hidden></ul>
+        <p id="address-help" class="help">도로명 주소나 읍·면·동 이름을 넣으세요. 검색어는 OpenStreetMap 주소 검색 서버로 전송됩니다.</p>
+
         <label for="region">지역</label>
         <select id="region"></select>
 
@@ -41,6 +50,8 @@
         </div>
         <p id="coord-help" class="help">지역을 고르면 자동으로 채워집니다. 직접 고쳐도 됩니다.</p>
         <button type="button" id="locate" class="text-button">현재 위치 사용</button>
+        <div id="pick-map" class="pick-map"></div>
+        <p class="help">지도를 누르면 그 위치의 위도·경도가 들어갑니다. 회색 점은 학습 자료가 있는 발전소 위치입니다.</p>
 
         <label for="capacity">설비용량(kW)</label>
         <input id="capacity" inputmode="decimal" autocomplete="off">
@@ -94,7 +105,7 @@
   </main>
 
   <footer>
-    <p>날씨 예보: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> (CC BY 4.0). 발전실적: 공공데이터포털, 한국남부발전(주) 발전소별 태양광 발전실적.</p>
+    <p>날씨 예보: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> (CC BY 4.0). 발전실적: 공공데이터포털(한국남부발전, 한국동서발전, 한국수력원자력, 한국지역난방공사). 지도 경계: Natural Earth. 주소 검색: © OpenStreetMap 기여자(Nominatim).</p>
     <p>학습용 프로젝트의 예측값이며 실제 입찰·정산 결과를 보장하지 않습니다.</p>
   </footer>
 

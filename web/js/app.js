@@ -3,6 +3,7 @@
 import * as ort from '../vendor/ort/ort.wasm.min.mjs';
 import { ForecastError, createPredictor, fetchForecast, fetchPastForecast, predictDay } from './forecast.js';
 import { formatKwh, renderDayChart } from './chart.js';
+import { renderKoreaMap } from './map.js';
 import { sunriseSunset } from './solar.js';
 
 ort.env.wasm.wasmPaths = new URL('../vendor/ort/', import.meta.url).href;
@@ -23,6 +24,7 @@ const $ = (id) => document.getElementById(id);
 let meta = null;
 let predictor = null;
 let actuals = null;
+let baseMap = null;
 let lastForecast = null;
 let lastVerify = null;
 
@@ -113,7 +115,7 @@ function facts(items) {
 function legend(series) {
   const ul = node('ul', { class: 'legend' });
   for (const s of series) {
-    const key = node('span', { class: 'key' });
+    const key = node('span', { class: s.dot ? 'key dot' : 'key' });
     key.style.background = s.color;
     ul.append(node('li', {}, key, node('span', { text: s.name })));
   }
@@ -166,6 +168,129 @@ function spreadOf(day) {
 function spreadText(value) {
   const bin = meta.spread_bins.find((b) => value <= b.upto) || meta.spread_bins[meta.spread_bins.length - 1];
   return `${bin.label} (이런 날의 평균 오차율 ${fmt(1).format(bin.nmae)}%)`;
+}
+
+// ------------------------------------------------------------ 주소로 위치 찾기
+const GEOCODE_API = 'https://nominatim.openstreetmap.org/search';
+
+/** 검색 결과의 이름을 한국식 순서(넓은 곳 → 좁은 곳)로 바꾼다. 나라 이름과 우편번호는 뺀다. */
+function koreanOrder(displayName) {
+  return displayName
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part && part !== '대한민국' && !/^\d{5}$/.test(part))
+    .reverse()
+    .join(' ');
+}
+
+async function geocode(query) {
+  const params = new URLSearchParams({ format: 'jsonv2', q: query, countrycodes: 'kr', 'accept-language': 'ko', limit: '5' });
+  let response;
+  try {
+    response = await fetch(`${GEOCODE_API}?${params}`, { headers: { Accept: 'application/json' } });
+  } catch {
+    throw new ForecastError('주소 검색 서버에 연결하지 못했습니다. 인터넷 연결을 확인하거나 지도에서 위치를 고르세요.');
+  }
+  if (response.status === 429 || response.status === 403) {
+    throw new ForecastError('주소 검색 요청이 잠시 제한됐습니다. 조금 뒤에 다시 찾거나 지도에서 위치를 고르세요.');
+  }
+  if (!response.ok) throw new ForecastError(`주소 검색에 실패했습니다(${response.status}). 지도에서 위치를 고르세요.`);
+  const list = await response.json();
+  return list
+    .map((item) => ({ lat: Number(item.lat), lon: Number(item.lon), name: koreanOrder(item.display_name || '') }))
+    .filter((r) => r.lat >= LIMITS.lat[0] && r.lat <= LIMITS.lat[1] && r.lon >= LIMITS.lon[0] && r.lon <= LIMITS.lon[1]);
+}
+
+function applyLocation(result, fallback) {
+  $('region').value = '';
+  $('lat').value = result.lat.toFixed(4);
+  $('lon').value = result.lon.toFixed(4);
+  for (const id of ['lat', 'lon']) $(id).setAttribute('aria-invalid', 'false');
+  $('address-results').hidden = true;
+  const status = $('address-status');
+  status.textContent = `찾은 위치: ${result.name}${fallback ? ` (입력한 주소 그대로는 없어 '${fallback}'로 찾음)` : ''}`;
+  status.hidden = false;
+  drawPickMap();
+}
+
+/** 두 지점 사이 거리(km). */
+function distanceKm(a, b) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+
+async function searchAddress() {
+  showError('forecast-error', '');
+  $('address-status').hidden = true;
+  $('address-results').hidden = true;
+  const query = $('address').value.trim().replace(/\s+/g, ' ');
+  if (query.length < 2) {
+    $('address').focus();
+    throw new ForecastError('찾을 주소나 지명을 두 글자 이상 입력하세요.');
+  }
+  // 전체 주소로 못 찾으면 뒤쪽 단어를 하나씩 덜어 더 넓은 행정구역으로 다시 찾는다(최대 두 번).
+  const words = query.split(' ');
+  let results = [];
+  let used = query;
+  for (let cut = 0; cut <= Math.min(2, words.length - 1); cut++) {
+    used = words.slice(0, words.length - cut).join(' ');
+    if (cut) await new Promise((resolve) => setTimeout(resolve, 1100)); // 검색 서버 이용 규칙: 1초에 한 번 이하
+    results = await geocode(used);
+    if (results.length) break;
+  }
+  if (!results.length) {
+    throw new ForecastError(`'${query}'의 위치를 찾지 못했습니다. 읍·면·동 이름까지만 넣어 다시 찾거나 지도에서 위치를 고르세요.`);
+  }
+  const fallback = used === query ? null : used;
+  // 이름이 같은 결과는 하나만 남긴다
+  results = results.filter((r, i) => results.findIndex((o) => o.name === r.name) === i);
+  // 후보가 모두 2km 안에 있으면 고를 필요가 없다(날씨 예보 격자가 약 10km).
+  if (results.every((r) => distanceKm(r, results[0]) < 2)) return applyLocation(results[0], fallback);
+
+  const list = $('address-results');
+  list.replaceChildren();
+  for (const result of results) {
+    const button = node('button', { type: 'button', text: result.name });
+    button.addEventListener('click', () => applyLocation(result, fallback));
+    list.append(node('li', {}, button));
+  }
+  list.hidden = false;
+  const status = $('address-status');
+  status.textContent = `${fallback ? `입력한 주소 그대로는 없어 '${fallback}'로 찾았습니다. ` : ''}서로 떨어진 후보 ${results.length}곳 중에서 고르세요.`;
+  status.hidden = false;
+}
+
+// ------------------------------------------------------------ 지도
+/** 예측 화면의 작은 지도: 누르면 그 위치가 위도·경도 입력란에 들어간다. */
+function drawPickMap() {
+  if (!baseMap) return;
+  renderKoreaMap($('pick-map'), {
+    base: baseMap,
+    sites: meta.sites,
+    selected: { lat: Number($('lat').value), lon: Number($('lon').value) },
+    onPick: (lat, lon) => {
+      $('region').value = '';
+      $('lat').value = lat;
+      $('lon').value = lon;
+      showError('forecast-error', '');
+      drawPickMap();
+    },
+    label: '위치를 고르는 대한민국 지도. 회색 점은 학습 자료가 있는 발전소 위치.',
+  });
+}
+
+/** 모델과 데이터 화면의 지도: 학습에 쓴 위치와 쓰지 않은 위치를 색으로 구분한다. */
+function drawAboutMap() {
+  if (!baseMap || !$('about-map')) return;
+  renderKoreaMap($('about-map'), {
+    base: baseMap,
+    sites: meta.sites,
+    categories: true,
+    label: `발전소 위치 ${meta.sites.length}곳을 표시한 대한민국 지도.`,
+  });
 }
 
 // ------------------------------------------------------------ 내일 예측
@@ -357,11 +482,20 @@ function renderAbout() {
       text: `발전소·호기 ${meta.data.series}개의 낮 시간 ${fmt(0).format(meta.data.test_rows)}건으로 평가했습니다. 오차율은 예측과 실제의 차이를 설비용량으로 나눈 값의 평균입니다. 목표는 발전소를 한 묶음으로 본 오차율 ${meta.target}% 이하이고, 시험 결과는 ${fmt(2).format(meta.goal.portfolio_nmae_active)}%입니다(이용률 10% 이상 시간대). 개별 발전소 평균은 ${fmt(2).format(meta.goal.plant_nmae)}%입니다.`,
     }),
     node('div', { class: 'table-scroll' }, table),
+    node('h2', { text: '발전소 분포' }),
+    node('p', {
+      text: `발전실적을 쓴 위치는 ${meta.sites.length}곳입니다. 점 위에 마우스를 올리면 그 위치의 설비용량과 시험 오차율이 나옵니다.`,
+    }),
+    legend([
+      { name: `학습에 쓴 위치 ${meta.sites.filter((x) => !x.new_site).length}곳`, color: 'var(--series-forecast)', dot: true },
+      { name: `학습에 쓰지 않은 위치 ${meta.sites.filter((x) => x.new_site).length}곳`, color: 'var(--series-actual)', dot: true },
+    ]),
+    node('div', { id: 'about-map', class: 'about-map' }),
     node('h2', { text: '데이터' }),
     node(
       'ul',
       {},
-      node('li', { text: '발전실적: 공공데이터포털, 한국남부발전(주) 발전소별 태양광 발전실적(이용허락범위 제한 없음).' }),
+      node('li', { text: '발전실적: 공공데이터포털에 공개된 한국남부발전, 한국동서발전, 한국수력원자력, 한국지역난방공사의 시간대별 태양광 발전실적(이용허락범위 제한 없음).' }),
       node('li', { text: '날씨: Open-Meteo Previous Runs API의 하루 전 예보 이력(CC BY 4.0). 일본 기상청, 유럽중기예보센터, 독일 기상청 모델.' }),
       node('li', { text: `학습 ${meta.periods.train.join(' ~ ')}, 검증 ${meta.periods.val.join(' ~ ')}, 시험 ${meta.periods.test.join(' ~ ')}.` }),
     ),
@@ -387,8 +521,12 @@ function setupTabs() {
       $(t.getAttribute('aria-controls')).hidden = !on;
     }
     // 숨겨져 있던 화면은 너비가 0이라 차트를 다시 그려야 한다
-    if (tab.id === 'tab-forecast') renderForecast();
+    if (tab.id === 'tab-forecast') {
+      renderForecast();
+      drawPickMap();
+    }
     if (tab.id === 'tab-verify') renderVerify();
+    if (tab.id === 'tab-about') drawAboutMap();
   };
   tabs.forEach((tab, i) => {
     tab.addEventListener('click', () => select(tab));
@@ -411,8 +549,16 @@ function setupForecastForm() {
     $('lat').value = found[1];
     $('lon').value = found[2];
   };
-  region.addEventListener('change', fill);
-  for (const id of ['lat', 'lon']) $(id).addEventListener('input', () => { region.value = ''; });
+  region.addEventListener('change', () => {
+    fill();
+    drawPickMap();
+  });
+  for (const id of ['lat', 'lon']) {
+    $(id).addEventListener('input', () => {
+      region.value = '';
+      drawPickMap();
+    });
+  }
 
   let saved = null;
   try {
@@ -429,6 +575,27 @@ function setupForecastForm() {
   $('capacity').value = saved?.capacityKw ?? 100;
   $('ratio').value = saved?.ratio ?? meta.default_ratio.toFixed(2);
 
+  const runSearch = async () => {
+    const button = $('address-search');
+    button.disabled = true;
+    button.textContent = '찾는 중';
+    try {
+      await searchAddress();
+    } catch (error) {
+      console.error(error);
+      showError('forecast-error', error instanceof ForecastError ? error.message : `주소를 찾지 못했습니다. (${error.message})`);
+    } finally {
+      button.disabled = false;
+      button.textContent = '찾기';
+    }
+  };
+  $('address-search').addEventListener('click', runSearch);
+  $('address').addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault(); // 엔터가 예측 실행으로 넘어가지 않게 한다
+    runSearch();
+  });
+
   $('locate').addEventListener('click', () => {
     if (!navigator.geolocation) return showError('forecast-error', '이 브라우저는 현재 위치를 알려 주지 않습니다. 위도와 경도를 직접 입력하세요.');
     navigator.geolocation.getCurrentPosition(
@@ -437,6 +604,7 @@ function setupForecastForm() {
         $('lat').value = pos.coords.latitude.toFixed(4);
         $('lon').value = pos.coords.longitude.toFixed(4);
         showError('forecast-error', '');
+        drawPickMap();
       },
       () => showError('forecast-error', '현재 위치를 가져오지 못했습니다. 위치 권한을 허용하거나 위도와 경도를 직접 입력하세요.'),
     );
@@ -512,9 +680,16 @@ async function init() {
     $('forecast-placeholder').textContent = '모델 파일을 불러오지 못했습니다. 페이지를 새로 고쳐 보세요.';
     return;
   }
+  try {
+    const res = await fetch('data/korea.json');
+    baseMap = res.ok ? await res.json() : null;
+  } catch {
+    baseMap = null; // 지도 바탕을 못 읽어도 나머지 기능은 그대로 쓴다
+  }
   setupForecastForm();
   setupVerifyForm();
   renderAbout();
+  drawPickMap();
   bindSubmit('forecast-form', 'forecast-submit', 'forecast-error', 'forecast-result', runForecast);
   bindSubmit('verify-form', 'verify-submit', 'verify-error', 'verify-result', runVerify);
 
@@ -522,8 +697,12 @@ async function init() {
   window.addEventListener('resize', () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
-      if (!$('panel-forecast').hidden) renderForecast();
+      if (!$('panel-forecast').hidden) {
+        renderForecast();
+        drawPickMap();
+      }
       if (!$('panel-verify').hidden) renderVerify();
+      if (!$('panel-about').hidden) drawAboutMap();
     }, 150);
   });
 

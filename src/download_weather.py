@@ -6,7 +6,7 @@
 - 무료 한도(분당 600·시간당 5,000·일 10,000 가중 호출)를 넘지 않도록 요청 사이에 쉰다.
 - 결과: data/raw/weather/<위치키>_<요청이름>.csv.gz (이미 있으면 건너뛴다)
 
-실행: python src/download_weather.py
+실행: python src/download_weather.py [--no-lead] [위치키 ...]
 """
 
 from __future__ import annotations
@@ -64,7 +64,13 @@ def fetch(lat: float, lon: float, spec: dict) -> pd.DataFrame:
         "timezone": "Asia/Seoul",
     }
     for attempt in range(6):
-        resp = requests.get(API, params=params, timeout=180)
+        try:
+            resp = requests.get(API, params=params, timeout=180)
+        except requests.exceptions.RequestException as exc:  # 응답 지연·연결 끊김은 잠시 뒤 다시 시도
+            wait = 60 * (attempt + 1)
+            print(f"    연결 오류 {type(exc).__name__} → {wait}초 뒤 재시도", flush=True)
+            time.sleep(wait)
+            continue
         if resp.status_code == 200:
             body = resp.json()
             df = pd.DataFrame(body["hourly"])
@@ -82,13 +88,17 @@ def main() -> None:
     plants = pd.read_csv(ROOT / "data" / "plants.csv")
     plants = plants[plants["use"] == 1]
     locs = plants[["lat", "lon", "area"]].drop_duplicates(["lat", "lon"]).reset_index(drop=True)
-    only = set(sys.argv[1:])  # 위치키를 인자로 주면 그 위치만 받는다
+    args = sys.argv[1:]
+    only = {a for a in args if not a.startswith("--")}  # 위치키를 인자로 주면 그 위치만 받는다
+    skip_lead = "--no-lead" in args  # 예보 시점 비교용 보조 자료는 건너뛴다(요청 한도 절약)
     print(f"위치 {len(locs)}곳, 기간 {START}~{END}")
     for i, row in locs.iterrows():
         key = loc_key(row.lat, row.lon)
         if only and key not in only:
             continue
         for name, spec in REQUESTS.items():
+            if name == "lead" and skip_lead:
+                continue
             path = OUT / f"{key}_{name}.csv.gz"
             if path.exists():
                 continue
